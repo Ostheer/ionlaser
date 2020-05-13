@@ -1,77 +1,62 @@
-#define PERIOD 1
-#define CLKRATIO 2 //amount of loop cycles per clock cycle
-#define CLKPWMRATIO 100 //amount of clock cycles per pwm cycle
+/* Timing constants */
+#define CLKPWMRATIO 100 // Amount of clock cycles per display update cycle
+#define UPDATECOUNT 1000 // Amount of clock cycles per frame. One frame takes CLKPWMRATIO*UPDATECOUNT clock cycles
 
+/* Pin definitions */
 #define PWMPIN D1
 #define CLKPIN D2
 #define RSTPIN D5
 
-int pwmduty = 0;
-int clkduty = 0;
-int j;
-int k;
-int sweep = 0;
+/* Timekeeping variables */
+bool clk = false;
+int k = 0;
+int s = 0;
+int a = 0;
+
+/* Framebuffer */
+bool buffer[CLKPWMRATIO] = {};
 
 void setup() {
   pinMode(PWMPIN,OUTPUT);
   pinMode(CLKPIN,OUTPUT);
   pinMode(RSTPIN,INPUT);
   digitalWrite(RSTPIN,LOW);
-  
-  //Serial.begin(9600);
-  
-  pwmduty = 0;
-  clkduty = 1;
-  
-  j = 0;
-  k = 0;
   flush();
+
+  //set segment permanently on
+  //for (int i = 20; i<40; i++) buffer[i]=true;
 }
   
 void loop() {
-  j++;
-  sweep++;
-
-  if (sweep == PERIOD*2500){
-    pwmduty = pwmduty + 1;
-    if (pwmduty > 100) pwmduty = 0;
-    sweep = 0;
-  }
+  /* Write buffer */
+  digitalWrite(PWMPIN,!buffer[k]);
   
-  if (j == clkduty){
-    digitalWrite(CLKPIN,LOW);
-    
-    if (k == pwmduty){
-      digitalWrite(PWMPIN,LOW);
-    }
-    if (k == CLKPWMRATIO){
-      k = 0;
-      digitalWrite(PWMPIN,HIGH);
-    }
-  }
-  if (j == CLKRATIO){
-    j = 0;
+  /* Do animation */
+  //buffer[a] = !buffer[a]; //fill and clear
+  //buffer[a]=true; if (a>0) buffer[a-1]=false; else buffer[CLKPWMRATIO]=false; //walking line
+  if (a>CLKPWMRATIO) a=0;
+  
+  /* Take care of Animation update rate */
+  s++;
+  if (s>UPDATECOUNT) {a++;s=0;}
+  
+  /* Generate clock signal */
+  if (clk) {
     k++;
-    digitalWrite(CLKPIN,HIGH);
+    if (k == CLKPWMRATIO) k = 0;
   }
-  
-  //delayMicroseconds(PERIOD);
+  clk = !clk;
+  digitalWrite(CLKPIN,clk);
 }
 
-//flush the counter IC's until they reset
-int flush() {
-  digitalWrite(PWMPIN,LOW);
-  
-
+/* Flush the counter IC's until they reset */
+void flush() {
   for (int i = 0; i < CLKPWMRATIO; i++){
-    digitalWrite(CLKPIN,HIGH);
-    for (int j = 0; j < CLKRATIO; j++){
-      if (j == clkduty) digitalWrite(CLKPIN,LOW);
-      delayMicroseconds(10);
-      if (digitalRead(RSTPIN)) return i;
-      delayMicroseconds(10);
-    }
+    digitalWrite(CLKPIN,LOW);
+    delayMicroseconds(10);
+    if (digitalRead(RSTPIN)) return;
+    delayMicroseconds(10);
+    digitalWrite(CLKPIN,HIGH); 
+    delayMicroseconds(20);
   }
-
-  return 0;
 }
