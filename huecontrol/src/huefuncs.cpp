@@ -127,6 +127,16 @@ int getNumLights(){
 
 } 
 
+int getMaxLightIndex(int numLights){
+  int i = numLights;
+  DynamicJsonDocument doc = getLightStatus(i);
+  while (!doc["type"].isNull()){
+    i++;
+    doc = getLightStatus(i);
+  }
+  return i;
+}
+
 void alertLight(int light){
   sendLightCommand(light, "{\"alert\":\"select\"}");
 }

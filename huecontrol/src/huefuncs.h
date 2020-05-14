@@ -8,6 +8,7 @@
 void sendLightCommand(int light, String command);
 DynamicJsonDocument getLightStatus(int light);
 int getNumLights();
+int getMaxLightIndex(int numLights);
 void alertLight(int light);
 
 extern WiFiClient client;

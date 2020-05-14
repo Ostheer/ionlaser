@@ -37,6 +37,7 @@ IPAddress dns(DNS0, DNS1, DNS2, DNS3);
 
 /* Philips Hue */
 int numLights;
+int maxLightIndex;
 int currentLight;
 bool lampUpdated = false;
 
@@ -68,6 +69,7 @@ void setup() {
 
   /* Get number of Hue lights */
   numLights = getNumLights();
+  maxLightIndex = getMaxLightIndex(numLights);
   currentLight = 1;
 
   /* Initialise display */
@@ -108,12 +110,12 @@ void loop() {
     /* Check if the switch has been used to go to the next light */
     if (switches[1] != digitalRead(SW1)){
       currentLight++;
-      if (currentLight > numLights) currentLight = 1;
+      if (currentLight > maxLightIndex) currentLight = 1;
       DynamicJsonDocument doc = getLightStatus(currentLight);
       //TODO: this is a potential deadlock
-      while (doc.isNull()){
+      while (doc["type"].isNull()){
         currentLight++;
-        if (currentLight > numLights) currentLight = 1;
+        if (currentLight > maxLightIndex) currentLight = 1;
         doc = getLightStatus(currentLight);
       }
 
