@@ -24,7 +24,7 @@
 // Amount of clock cycles per frame. One frame takes DL*UPDATECOUNT clock cycles
 #define UPDATECOUNT 1000
 #define HUE_SEND_INTERVAL 6 //extra counter for less frequent hue updates
-#define IDLE_TIMEOUT 10000 //when to start animation
+#define IDLE_TIMEOUT 1000000 //when to start animation. 100000 cycles ~ 1 second
 
 //knob resolution
 #define KNOB_THRESHOLD 50

@@ -13,6 +13,9 @@ int displayIndex = 0;
 int updateCounter = 0;
 int animationFrame = 0;
 int knobPollCounter = 0;
+unsigned long int timeOutCounter = 0;
+//system state
+bool idle = false;
 //framebuffer 
 bool buffer[DL] = {};
 
@@ -71,6 +74,7 @@ void setup() {
   numLights = getNumLights();
   maxLightIndex = getMaxLightIndex(numLights);
   currentLight = 1;
+  ledNumberDisplay(currentLight);
 
   /* Initialise display */
   delay(2500);
@@ -89,11 +93,23 @@ void loop() {
   /* Write display buffer element */
   digitalWrite(DPWMPIN,!buffer[DL-1-displayIndex]);
   
-  /* Display Animations */
-  //if (animationFrame>2*DL/3) animationFrame=0;
-  //else if (animationFrame>DL/3){ buffer[DL/2-DL/3+(animationFrame-DL/3)-1] = false; buffer[DL/2+DL/3-(animationFrame-DL/3)+1] = false; }
-  //else{ buffer[DL/2-animationFrame]=true; buffer[DL/2+animationFrame]=true; }
-
+  /* Handle idle state */
+  if (timeOutCounter > IDLE_TIMEOUT) idle = true;
+  if (!idle) {
+    if (timeOutCounter == 0) displayValue(0);
+    timeOutCounter++;
+  }
+  else{
+    if (timeOutCounter != 0){
+      timeOutCounter = 0;
+      displayValue(0);
+    }
+    /* Display Animations */
+    if (animationFrame>2*DL/3) animationFrame=0;
+    else if (animationFrame>DL/3){ buffer[DL/2-DL/3+(animationFrame-DL/3)-1] = false; buffer[DL/2+DL/3-(animationFrame-DL/3)+1] = false; }
+    else{ buffer[DL/2-animationFrame]=true; buffer[DL/2+animationFrame]=true; }
+  }
+  
 
   /* Take care of Animation/Action updates */
   updateCounter++;
@@ -108,7 +124,8 @@ void loop() {
     else {leds |= RUNMODE; leds &= inv(STNDBYMODE);}
 
     /* Check if the switch has been used to go to the next light */
-    if (switches[1] != digitalRead(SW1)){
+    if (switchChanged(1, digitalRead(SW1))){
+      idle = false;
       currentLight++;
       if (currentLight > maxLightIndex) currentLight = 1;
       DynamicJsonDocument doc = getLightStatus(currentLight);
@@ -125,13 +142,19 @@ void loop() {
       alertLight(currentLight);
     }
 
+    //disable idle mode if switch changed
+    if (switchChanged(0, digitalRead(SW0))) idle = false;
+
     /* Read knob position and update lights */
     knobPollCounter++;
     if (knobPollCounter > HUE_SEND_INTERVAL){
       knobPollCounter = 0;
       int knobPosition = analogRead(A0);
-      displayValue(knobPosition);
-      updateLight(currentLight, knobPosition);
+      if (!idle) displayValue(knobPosition);
+      if (knobChanged(knobPosition)){
+        idle = false;
+        updateLight(currentLight, knobPosition);
+      }
     }
 
     shiftreg.print(leds); //write to shift register
@@ -180,26 +203,34 @@ unsigned char reversebits(unsigned char b){
 
 void updateLight(int light, int knobPosition){
   //knobPosition between 0-1023
-  if (abs(knob-knobPosition) > KNOB_THRESHOLD){
-    if (!switches[0]){
-      if (knobPosition < KNOB_THRESHOLD)
-        sendLightCommand(light, "{\"on\": false}");
-      else{
-        unsigned int brval = knobPosition;
-        sendLightCommand(light, "{\"on\": true}");
-        brval = brval >> 2;
-        if (brval > 0xFE) brval=0xFE;
-        sendLightCommand(light, "{\"bri\": " + (String)brval + "}");
-      }
-    }
+  if (!switches[0]){
+    if (knobPosition < KNOB_THRESHOLD)
+      sendLightCommand(light, "{\"on\": false}");
     else{
-      unsigned int hueval = knobPosition;
-      hueval = hueval << 6;
-      sendLightCommand(light, "{\"hue\": " + (String)hueval + "}");
+      unsigned int brval = knobPosition;
+      sendLightCommand(light, "{\"on\": true}");
+      brval = brval >> 2;
+      if (brval > 0xFE) brval=0xFE;
+      sendLightCommand(light, "{\"bri\": " + (String)brval + "}");
     }
-    knob = knobPosition;
-    lampUpdated = true;
   }
+  else{
+    unsigned int hueval = knobPosition;
+    hueval = hueval << 6;
+    sendLightCommand(light, "{\"hue\": " + (String)hueval + "}");
+  }
+  knob = knobPosition;
+  lampUpdated = true;
+}
+
+bool knobChanged(int knobPosition){
+  if (abs(knob-knobPosition) > KNOB_THRESHOLD) return true;
+  else return false;
+}
+
+bool switchChanged(int sw, bool currentState){
+  if (switches[sw] != currentState) return true;
+  else return false;
 }
 
 void displayValue(int knobPosition){

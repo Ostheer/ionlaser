@@ -7,6 +7,8 @@ void ledNumberDisplay(unsigned char val);
 unsigned char reversebits(unsigned char b);
 void updateLight(int light, int knobPosition);
 void displayValue(int knobPosition);
+bool knobChanged(int knobPosition);
+bool switchChanged(int sw, bool currentState);
 
 /* Pin definitions */
 //display
