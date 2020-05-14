@@ -18,7 +18,7 @@ void displayValue(int knobPosition);
 #define SCLKPIN D7
 #define SSDIPIN D8
 //switches
-#define SW0 D3
+#define SW0 D0
 #define SW1 D4
 
 //led masks

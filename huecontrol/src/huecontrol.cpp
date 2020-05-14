@@ -9,9 +9,9 @@
 /* Display stuff */
 //timekeeping variables
 bool clk = false;
-int k = 0;
+int displayIndex = 0;
 int updateCounter = 0;
-int a = 0;
+int animationFrame = 0;
 int knobPollCounter = 0;
 //framebuffer 
 bool buffer[DL] = {};
@@ -85,19 +85,19 @@ void setup() {
   
 void loop() {
   /* Write display buffer element */
-  digitalWrite(DPWMPIN,!buffer[DL-1-k]);
+  digitalWrite(DPWMPIN,!buffer[DL-1-displayIndex]);
   
   /* Display Animations */
-  //if (a>2*DL/3) a=0;
-  //else if (a>DL/3){ buffer[DL/2-DL/3+(a-DL/3)-1] = false; buffer[DL/2+DL/3-(a-DL/3)+1] = false; }
-  //else{ buffer[DL/2-a]=true; buffer[DL/2+a]=true; }
+  //if (animationFrame>2*DL/3) animationFrame=0;
+  //else if (animationFrame>DL/3){ buffer[DL/2-DL/3+(animationFrame-DL/3)-1] = false; buffer[DL/2+DL/3-(animationFrame-DL/3)+1] = false; }
+  //else{ buffer[DL/2-animationFrame]=true; buffer[DL/2+animationFrame]=true; }
 
 
   /* Take care of Animation/Action updates */
   updateCounter++;
   if (updateCounter>UPDATECOUNT) {
     updateCounter=0;//reset action counter
-    a++;//update display frame counter
+    animationFrame++;//update display frame counter
     
     //Update switch leds
     if (digitalRead(SW0)) {leds |= CURRNTSCLE; leds &= inv(LIGHTSCALE);}
@@ -138,8 +138,8 @@ void loop() {
   
   /* Generate clock signal for display */
   if (clk) {
-    k++;
-    if (k == DL) k = 0;
+    displayIndex++;
+    if (displayIndex == DL) displayIndex = 0;
   }
   clk = !clk;
   digitalWrite(DCLKPIN,clk);
@@ -183,10 +183,11 @@ void updateLight(int light, int knobPosition){
       if (knobPosition < KNOB_THRESHOLD)
         sendLightCommand(light, "{\"on\": false}");
       else{
+        unsigned int brval = knobPosition;
         sendLightCommand(light, "{\"on\": true}");
-        knobPosition = knobPosition >> 2;
-        if (knobPosition > 0xFE) knobPosition=0xFE;
-        sendLightCommand(light, "{\"bri\": " + (String)knobPosition + "}");
+        brval = brval >> 2;
+        if (brval > 0xFE) brval=0xFE;
+        sendLightCommand(light, "{\"bri\": " + (String)brval + "}");
       }
     }
     else{
