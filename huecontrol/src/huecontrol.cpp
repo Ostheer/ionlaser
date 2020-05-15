@@ -77,7 +77,6 @@ void setup() {
   ledNumberDisplay(currentLight);
 
   /* Initialise display */
-  delay(2500);
   // Flush the counter IC's until they reset
   for (int i = 0; i < DL; i++){
     digitalWrite(DCLKPIN,LOW);
@@ -126,6 +125,7 @@ void loop() {
     /* Check if the switch has been used to go to the next light */
     if (switchChanged(1, digitalRead(SW1))){
       idle = false;
+      timeOutCounter = 0;
       currentLight++;
       if (currentLight > maxLightIndex) currentLight = 1;
       DynamicJsonDocument doc = getLightStatus(currentLight);
@@ -143,7 +143,10 @@ void loop() {
     }
 
     //disable idle mode if switch changed
-    if (switchChanged(0, digitalRead(SW0))) idle = false;
+    if (switchChanged(0, digitalRead(SW0))) {
+      idle = false;
+      timeOutCounter = 0;
+    }
 
     /* Read knob position and update lights */
     knobPollCounter++;
@@ -153,6 +156,7 @@ void loop() {
       if (!idle) displayValue(knobPosition);
       if (knobChanged(knobPosition)){
         idle = false;
+        timeOutCounter = 0;
         updateLight(currentLight, knobPosition);
       }
     }
@@ -216,8 +220,15 @@ void updateLight(int light, int knobPosition){
   }
   else{
     unsigned int hueval = knobPosition;
-    hueval = hueval << 6;
-    sendLightCommand(light, "{\"hue\": " + (String)hueval + "}");
+    DynamicJsonDocument doc = getLightStatus(light);
+    if (doc["type"] == "Extended color light"){
+      hueval = hueval << 6;
+      sendLightCommand(light, "{\"hue\": " + (String)hueval + "}");
+    }
+    else if (doc["type"] == "Color temperature light"){
+      hueval = map(hueval, 154, 500, 0, 1023);
+      sendLightCommand(light, "{\"ct\": " + (String)hueval + "}");
+    }
   }
   knob = knobPosition;
   lampUpdated = true;
