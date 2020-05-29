@@ -107,6 +107,12 @@ void loop() {
     if (animationFrame>2*DL/3) animationFrame=0;
     else if (animationFrame>DL/3){ buffer[DL/2-DL/3+(animationFrame-DL/3)-1] = false; buffer[DL/2+DL/3-(animationFrame-DL/3)+1] = false; }
     else{ buffer[DL/2-animationFrame]=true; buffer[DL/2+animationFrame]=true; }
+
+    /* Led Animations */
+    if (!(animationFrame%70)){
+      leds = zero;
+      for (int nn = 0; nn < random(0,8); nn++) leds |= 1 << random(0,8);
+    }
   }
   
 
@@ -117,10 +123,12 @@ void loop() {
     animationFrame++;//update display frame counter
     
     //Update switch leds
-    if (digitalRead(SW0)) {leds |= CURRNTSCLE; leds &= inv(LIGHTSCALE);}
-    else {leds |= LIGHTSCALE; leds &= inv(CURRNTSCLE);}
-    if (digitalRead(SW1)) {leds |= STNDBYMODE; leds &= inv(RUNMODE);}
-    else {leds |= RUNMODE; leds &= inv(STNDBYMODE);}
+    if (!idle){
+      if (digitalRead(SW0)) {leds |= CURRNTSCLE; leds &= inv(LIGHTSCALE);}
+      else {leds |= LIGHTSCALE; leds &= inv(CURRNTSCLE);}
+      if (digitalRead(SW1)) {leds |= STNDBYMODE; leds &= inv(RUNMODE);}
+      else {leds |= RUNMODE; leds &= inv(STNDBYMODE);}
+    }
 
     /* Check if the switch has been used to go to the next light */
     if (switchChanged(1, digitalRead(SW1))){
